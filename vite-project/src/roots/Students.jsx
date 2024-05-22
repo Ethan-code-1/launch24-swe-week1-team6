@@ -6,10 +6,16 @@ import {
   Typography,
   Button,
   Grid,
-  RadioGroup, Radio, Select, MenuItem, FormControl, TextField, FormLabel, FormControlLabel, Checkbox
+  RadioGroup,
+  Radio,
+  Select,
+  MenuItem,
+  FormControl,
+  TextField,
+  FormLabel,
+  FormControlLabel,
+  Checkbox,
 } from "@mui/material";
-
-
 
 import EmojiEmotionsIcon from "@mui/icons-material/EmojiEmotions";
 import { db } from "../../firebase";
@@ -19,7 +25,7 @@ import {
   addDoc,
   deleteDoc,
   doc,
-  getDoc, 
+  getDoc,
   query,
   where,
 } from "firebase/firestore";
@@ -44,21 +50,17 @@ const Students = () => {
   const [enrolledIn, setEnrolledIn] = useState([]);
   const [selectedTeacherName, setSelectedTeacherName] = useState("");
 
-
-
-
-
   const fetchStudents = async () => {
     try {
-      //Get all student records 
+      //Get all student records
       const grabInformation = await getDocs(collection(db, "Students"));
       const studentsList = [];
-  
-      // From internet, user to handle nested async awaits 
+
+      // From internet, user to handle nested async awaits
       for (const doc of grabInformation.docs) {
         const data = doc.data();
         let enrolledInList = [];
-  
+
         // Check if student is enrolled in any classes
         if (data.enrolledIn && data.enrolledIn.length > 0) {
           // Loop through each class and fetch class names
@@ -77,9 +79,9 @@ const Students = () => {
             }
           }
         } else {
-          console.log('N/A');
+          console.log("N/A");
         }
-  
+
         // Fetch teacher name
         let teacherName = "N/A";
         if (data.Teacher) {
@@ -93,7 +95,7 @@ const Students = () => {
             console.error("Error fetching teacher data:", error);
           }
         }
-  
+
         studentsList.push({
           id: doc.id,
           First: data.First,
@@ -103,14 +105,13 @@ const Students = () => {
           Teacher: teacherName,
         });
       }
-  
+
       setStudents(studentsList);
       console.log(studentsList);
     } catch (error) {
       console.error("Error fetching student data: ", error);
     }
   };
-  
 
   const handleSearch = () => {
     if (searchQuery.trim() === "") {
@@ -137,35 +138,31 @@ const Students = () => {
     setSelectedStudent(student);
   };
 
-
   const handleAddOption = () => {
     // Handle whether user wants to add a new student
     setIsAddingStudent((prevState) => !prevState);
   };
 
-
-
-
-
-
-
-
   const getTeacherIdByName = async (firstName, lastName) => {
     try {
       // Query Firestore to get the teacher's ID
-      const q = query(collection(db, "teachers"), where("First", "==", firstName), where("Last", "==", lastName));
+      const q = query(
+        collection(db, "teachers"),
+        where("First", "==", firstName),
+        where("Last", "==", lastName)
+      );
       const querySnapshot = await getDocs(q);
-  
+
       if (querySnapshot.empty) {
         console.error("Selected teacher not found");
         return null;
       }
-  
+
       let selectedTeacherId = null;
       querySnapshot.forEach((doc) => {
         selectedTeacherId = doc.id;
       });
-  
+
       return selectedTeacherId;
     } catch (error) {
       console.error("Error fetching teacher ID: ", error);
@@ -175,30 +172,33 @@ const Students = () => {
 
   const getClassRefByName = async (className) => {
     try {
-      const q = query(collection(db, "Classes"), where("Name", "==", className));
+      const q = query(
+        collection(db, "Classes"),
+        where("Name", "==", className)
+      );
       const querySnapshot = await getDocs(q);
-  
+
       if (querySnapshot.empty) {
         console.error(`Class with name ${className} not found`);
         return null;
       }
-  
+
       let classRef = null;
       querySnapshot.forEach((doc) => {
         classRef = doc.ref;
       });
-  
+
       return classRef;
     } catch (error) {
       console.error("Error fetching class reference: ", error);
       return null;
     }
   };
-  
+
   const fetchTeacherName = async (teacherRef) => {
     try {
       const teacherDoc = await getDoc(teacherRef);
-      console.log(teacherDoc); 
+      console.log(teacherDoc);
       if (teacherDoc.exists()) {
         const teacherData = teacherDoc.data();
         return `${teacherData.First} ${teacherData.Last}`;
@@ -211,16 +211,6 @@ const Students = () => {
       return "N/A";
     }
   };
-  
-
-
-
-
-
-
-
-
-
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -233,13 +223,12 @@ const Students = () => {
 
     let teacher_id = await getTeacherIdByName(Teacher.First, Teacher.Last);
     const teacherRef = doc(db, "teachers", teacher_id);
-    //console.log(enrolledIn); 
+    //console.log(enrolledIn);
 
     const enrolledInRefs = await Promise.all(
       enrolledIn.map(async (className) => await getClassRefByName(className))
     );
-    
-    
+
     const newStudent = {
       First,
       Last,
@@ -247,15 +236,14 @@ const Students = () => {
       Teacher: teacherRef,
       enrolledIn: enrolledInRefs,
     };
-  
+
     // Log the newStudent object before adding it to Firestore
     console.log("Submitting new student: ", newStudent);
-    
+
     try {
       const docRef = await addDoc(collection(db, "Students"), newStudent);
       console.log("Document written with ID: ", docRef.id);
       fetchStudents();
-      
 
       // Clear form fields after submission for better user experience
       setFirst("");
@@ -291,24 +279,10 @@ const Students = () => {
     fetchStudents();
   }, []);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   //
 
   const handleCheckboxChange = (event) => {
-    //From internet 
+    //From internet
     const value = event.target.value;
     setEnrolledIn((prev) => {
       if (prev.includes(value)) {
@@ -317,7 +291,6 @@ const Students = () => {
         return [...prev, value];
       }
     });
-    
   };
 
   useEffect(() => {
@@ -338,7 +311,6 @@ const Students = () => {
     fetchTeachers();
   }, []);
 
-
   useEffect(() => {
     const fetchClasses = async () => {
       try {
@@ -357,21 +329,19 @@ const Students = () => {
     fetchClasses();
   }, []);
 
-
-
-
-
-
-
   //
   return (
     <div>
       <div className="image-container">
-        <img src="/homePageSchool.jpeg" alt="School Image" className="full-width-image"></img>
+        <img
+          src="/homePageSchool.jpeg"
+          alt="School Image"
+          className="full-width-image"
+        ></img>
         <div className="overlay"></div>
-        <h1 className="homeScreenHeader">Student Directory</h1>
-    </div>
-    <hr className = "homePageHr"></hr>
+        <h1 className="studentScreenHeader">Student Directory</h1>
+      </div>
+      <hr className="homePageHr"></hr>
       <Card className="main-wrapper">
         <div className="left-container">
           <h1> All Students</h1>
@@ -390,75 +360,77 @@ const Students = () => {
 
           {/* Provide an option where we can add students */}
           <div className="addStudent-option">
-      <figcaption onClick={handleAddOption}>
-        Can't find your student? {isAddingStudent ? "▲" : "▼"}
-      </figcaption>
-      <br />
-      {isAddingStudent && (
-        <form onSubmit={handleSubmit}>
-          <TextField
-            label="First Name"
-            value={First}
-            onChange={(e) => setFirst(e.target.value)}
-            fullWidth
-            margin="normal"
-          />
-          <TextField
-            label="Last Name"
-            value={Last}
-            onChange={(e) => setLast(e.target.value)}
-            fullWidth
-            margin="normal"
-          />
-          <FormControl fullWidth margin="normal">
-            <FormLabel>Grade</FormLabel>
-            <Select
-              value={Grade}
-              onChange={(e) => setGrade(e.target.value)}
-            >
-              <MenuItem value="">Select a grade</MenuItem>
-              <MenuItem value="Kindergarten">Kindergarten</MenuItem>
-              <MenuItem value="1st">1st</MenuItem>
-              <MenuItem value="2nd">2nd</MenuItem>
-              <MenuItem value="3rd">3rd</MenuItem>
-              <MenuItem value="4th">4th</MenuItem>
-              <MenuItem value="5th">5th</MenuItem>
-            </Select>
-          </FormControl>
-          <FormControl fullWidth margin="normal">
-            <FormLabel>Teacher</FormLabel>
-            <Select
-              value={Teacher}
-              onChange={(e) => setTeacher(e.target.value)}
-            >
-              <MenuItem value="">Select a teacher</MenuItem>
-              {teachers.map((teacher, index) => (
-                <MenuItem key={index} value={teacher}>
-                  {teacher.First} {teacher.Last}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl component="fieldset" fullWidth margin="normal">
-            <FormLabel component="legend">Enrolled In</FormLabel>
-            {classes.map((curClass, index) => (
-              <FormControlLabel
-                key={index}
-                control={
-                  <Checkbox
-                    checked={enrolledIn.includes(curClass.Name)}
-                    onChange={handleCheckboxChange}
-                    value={curClass.Name}
-                  />
-                }
-                label={curClass.Name}
-              />
-            ))}
-          </FormControl>
-          <Button type="submit" variant="contained" color="primary">Add Student</Button>
-        </form>
-      )}
-    </div>
+            <figcaption onClick={handleAddOption}>
+              Can't find your student? {isAddingStudent ? "▲" : "▼"}
+            </figcaption>
+            <br />
+            {isAddingStudent && (
+              <form onSubmit={handleSubmit}>
+                <TextField
+                  label="First Name"
+                  value={First}
+                  onChange={(e) => setFirst(e.target.value)}
+                  fullWidth
+                  margin="normal"
+                />
+                <TextField
+                  label="Last Name"
+                  value={Last}
+                  onChange={(e) => setLast(e.target.value)}
+                  fullWidth
+                  margin="normal"
+                />
+                <FormControl fullWidth margin="normal">
+                  <FormLabel>Grade</FormLabel>
+                  <Select
+                    value={Grade}
+                    onChange={(e) => setGrade(e.target.value)}
+                  >
+                    <MenuItem value="">Select a grade</MenuItem>
+                    <MenuItem value="Kindergarten">Kindergarten</MenuItem>
+                    <MenuItem value="1st">1st</MenuItem>
+                    <MenuItem value="2nd">2nd</MenuItem>
+                    <MenuItem value="3rd">3rd</MenuItem>
+                    <MenuItem value="4th">4th</MenuItem>
+                    <MenuItem value="5th">5th</MenuItem>
+                  </Select>
+                </FormControl>
+                <FormControl fullWidth margin="normal">
+                  <FormLabel>Teacher</FormLabel>
+                  <Select
+                    value={Teacher}
+                    onChange={(e) => setTeacher(e.target.value)}
+                  >
+                    <MenuItem value="">Select a teacher</MenuItem>
+                    {teachers.map((teacher, index) => (
+                      <MenuItem key={index} value={teacher}>
+                        {teacher.First} {teacher.Last}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl component="fieldset" fullWidth margin="normal">
+                  <FormLabel component="legend">Enrolled In</FormLabel>
+                  {classes.map((curClass, index) => (
+                    <FormControlLabel
+                      key={index}
+                      control={
+                        <Checkbox
+                          checked={enrolledIn.includes(curClass.Name)}
+                          onChange={handleCheckboxChange}
+                          value={curClass.Name}
+                        />
+                      }
+                      label={curClass.Name}
+                    />
+                  ))}
+                </FormControl>
+                <Button type="submit" variant="contained" color="primary">
+                  Add Student
+                </Button>
+              </form>
+            )}
+          </div>
 
           {/* Setting up how we would display student information through gridding */}
           <table className="student-list">
@@ -498,7 +470,7 @@ const Students = () => {
 
             <div className="student-profile-desc">
               {/* Display student card*/}
-              <Card className = "studentCard" sx={{ maxWidth: 500 }}>
+              <Card className="studentCard" sx={{ maxWidth: 500 }}>
                 <CardMedia
                   component="img"
                   height="200"
@@ -520,7 +492,13 @@ const Students = () => {
               <div className="student-info-containers"></div>
               <div className="academic-info">
                 <h2>Academic Information </h2>
-                <p> Enrolled In: {selectedStudent.enrolledIn ? selectedStudent.enrolledIn.join(', ') : "N/A"}</p>
+                <p>
+                  {" "}
+                  Enrolled In:{" "}
+                  {selectedStudent.enrolledIn
+                    ? selectedStudent.enrolledIn.join(", ")
+                    : "N/A"}
+                </p>
                 <p> Average Grade: {selectedStudent.Grade || "N/A"}</p>
                 <p>Teacher: {selectedStudent.Teacher || "N/A"}</p>
               </div>
