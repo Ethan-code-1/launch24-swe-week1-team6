@@ -39,6 +39,8 @@ const Students = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [isAddingStudent, setIsAddingStudent] = useState(false);
+  // State variable to control the visibility of the right container
+  const [showRightContainer, setShowRightContainer] = useState(true);
 
   // When adding a new student:
   const [First, setFirst] = useState("");
@@ -117,6 +119,9 @@ const Students = () => {
     setSelectedStudent(student);
     setEditedStudent(student);
     setIsEditing(false);
+
+    // Show the right container when a student is clicked
+    setShowRightContainer(true);
 
     // Fetch the teacher's name by ID
     const teacherName = await getTeacherNameById(student.Teacher);
@@ -239,6 +244,7 @@ const Students = () => {
   //   }
   // };
 
+  // Submit button handler for when user wants to log a new student into the database
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -283,6 +289,7 @@ const Students = () => {
     }
   };
 
+  // Utilized from the Teachers.jsx file
   const handleEditClick = () => {
     setEditedStudent(selectedStudent); // Initialize editedStudent with selectedStudent data
     setIsEditing(true);
@@ -307,6 +314,9 @@ const Students = () => {
       console.log(updatedStudents);
       setStudents(updatedStudents);
       setAllStudents(updatedStudents);
+
+      // Hide the right container after saving
+      setShowRightContainer(false);
     } catch (error) {
       console.error("Error updating student data: ", error);
     }
@@ -489,7 +499,7 @@ const Students = () => {
         </div>
 
         {/* We will only display the right container containing all information if user selects the student within the list on the left container*/}
-        {selectedStudent ? (
+        {showRightContainer && selectedStudent ? (
           <div className="right-container">
             <h1> Student Information </h1>
 
