@@ -206,6 +206,9 @@ const Students = () => {
       enrolledIn,
     };
 
+    console.log("NEW STUDENT: ", newStudent);
+
+      
     try {
       const docRef = await addDoc(collection(db, "Students"), newStudent);
       console.log("Document written with ID: ", docRef.id);
@@ -225,6 +228,7 @@ const Students = () => {
     } catch (error) {
       console.error("Error adding document: ", error);
     }
+    
   };
 
   // Utilized from the Teachers.jsx file
@@ -279,8 +283,9 @@ const Students = () => {
     setEditedStudent({ ...editedStudent, [name]: value });
   };
 
+
+
   const handleCheckboxChange = (event) => {
-    //From internet
     const value = event.target.value;
     setEnrolledIn((prev) => {
       if (prev.includes(value)) {
@@ -290,6 +295,10 @@ const Students = () => {
       }
     });
   };
+
+  useEffect(() => {
+    console.log('Enrolled In:', enrolledIn);
+  }, [enrolledIn]);
 
   useEffect(() => {
     fetchStudents();
@@ -392,21 +401,22 @@ const Students = () => {
                   </Select>
                 </FormControl>
                 <FormControl component="fieldset" fullWidth margin="normal">
-                  <FormLabel component="legend">Enrolled In</FormLabel>
-                  {classes.map((curClass, index) => (
-                    <FormControlLabel
-                      key={index}
-                      control={
-                        <Checkbox
-                          checked={enrolledIn.includes(curClass.Name)}
-                          onChange={handleCheckboxChange}
-                          value={curClass.Name}
-                        />
-                      }
-                      label={curClass.Name}
-                    />
-                  ))}
-                </FormControl>
+  <FormLabel component="legend">Enrolled In</FormLabel>
+  {classes.map((curClass) => (
+    <FormControlLabel
+      key={curClass.id}
+      control={
+        <Checkbox
+          checked={enrolledIn.includes(curClass.id)}
+          onChange={handleCheckboxChange}
+          value={curClass.id}
+        />
+      }
+      label={curClass.Name}
+    />
+  ))}
+</FormControl>
+
                 <Button
                   type="submit"
                   variant="contained"
