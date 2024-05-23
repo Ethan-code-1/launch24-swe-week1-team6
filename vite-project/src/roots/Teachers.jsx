@@ -2,6 +2,15 @@ import React, { useState, useEffect } from "react";
 import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 import "../styles/Teachers.css";
+import {
+  Card,
+  CardContent,
+  CardMedia,
+  Typography,
+  Button,
+  Grid,
+  RadioGroup, Radio, Select, MenuItem, FormControl, TextField, FormLabel, FormControlLabel, Checkbox
+} from "@mui/material";
 
 const Teachers = () => {
   const [allTeachers, setAllTeachers] = useState([]);
@@ -87,8 +96,8 @@ const Teachers = () => {
         <div className="overlay"></div>
         <h1 className="teacherScreenHeader">Teacher Directory</h1>
       </div>
-      <hr></hr>
-      <div className="main-wrapper">
+      <hr className = "homePageHr"></hr>
+      <Card className="main-wrapper" sx={{boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.2)'}}>
         <div className="left-panel">
           <h1>All Teachers</h1>
           <p>Browse through the list of all teachers</p>
@@ -176,16 +185,16 @@ const Teachers = () => {
                 )}
               </div>
               {isEditing ? (
-                <button onClick={handleSaveClick}>Save</button>
+                <Button sx={{background: '#147a7c', '&:hover': {backgroundColor: '#0f5f60',},}}onClick={handleSaveClick} variant="contained">Save</Button>
               ) : (
-                <button onClick={handleEditClick}>Edit</button>
+                <Button sx={{background: '#147a7c', '&:hover': {backgroundColor: '#0f5f60',},}} onClick={handleEditClick} variant="contained">Edit</Button>
               )}
             </div>
           ) : (
             <p>Select a teacher to see more details</p>
           )}
         </div>
-      </div>
+      </Card>
     </div>
   );
 };

@@ -83,7 +83,7 @@ useEffect(() => {
             <Typography variant="body1" color="text.secondary" id = "homePageCardDesc">
               View and edit information on <span className = "spanHome" style={{ fontWeight: 'bold' }}>{numberClasses}</span> classes offered
             </Typography>
-            <Button variant = "contained" color = "primary" id = "homePageCardBtn" onClick = {handleClasses}>View Classes</Button>
+            <Button variant = "contained" color = "primary" id = "homePageCardBtn" onClick = {handleClasses} sx={{background: '#147a7c', '&:hover': {backgroundColor: '#0f5f60',},}}>View Classes</Button>
           </CardContent>
         </Card>
       </Grid>
@@ -96,7 +96,7 @@ useEffect(() => {
             <Typography variant="body1" color="text.secondary" id = "homePageCardDesc">
               See <span className = "spanHome" style={{ fontWeight: 'bold' }}>{numberEvents}</span> upcoming events and add new ones
             </Typography>
-            <Button variant = "contained" color = "primary" id = "homePageCardBtn" onClick = {handleCalendar}>View Calendar</Button>
+            <Button sx={{background: '#147a7c', '&:hover': {backgroundColor: '#0f5f60',},}} variant = "contained" color = "primary" id = "homePageCardBtn" onClick = {handleCalendar}>View Calendar</Button>
 
           </CardContent>
         </Card>
@@ -110,7 +110,7 @@ useEffect(() => {
             <Typography variant="body1" color="text.secondary" id = "homePageCardDesc">
               View information associated with <span className = "spanHome" style={{ fontWeight: 'bold' }}>{numberStudents}</span> students
             </Typography>
-            <Button variant = "contained" color = "primary" id = "homePageCardBtn" onClick = {handleStudent}>Student Directory</Button>
+            <Button sx={{background: '#147a7c', '&:hover': {backgroundColor: '#0f5f60',},}} variant = "contained" color = "primary" id = "homePageCardBtn" onClick = {handleStudent}>Student Directory</Button>
 
           </CardContent>
         </Card>
@@ -124,7 +124,7 @@ useEffect(() => {
             <Typography variant="body1" color="text.secondary" id = "homePageCardDesc">
               View information associated with <span className = "spanHome" style={{ fontWeight: 'bold' }}>{numberTeachers}</span> teachers
             </Typography>
-            <Button variant = "contained" color = "primary" id = "homePageCardBtn" onClick = {handleTeacher}>Teacher Directory</Button>
+            <Button sx={{background: '#147a7c', '&:hover': {backgroundColor: '#0f5f60',},}} variant = "contained" color = "primary" id = "homePageCardBtn" onClick = {handleTeacher}>Teacher Directory</Button>
           </CardContent>
         </Card>
       </Grid>

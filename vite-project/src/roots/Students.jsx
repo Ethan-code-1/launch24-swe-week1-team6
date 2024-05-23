@@ -157,33 +157,6 @@ const Students = () => {
     setIsAddingStudent((prevState) => !prevState);
   };
 
-  // const getTeacherIdByName = async (firstName, lastName) => {
-  //   try {
-  //     // Query Firestore to get the teacher's ID
-  //     const q = query(
-  //       collection(db, "teachers"),
-  //       where("First", "==", firstName),
-  //       where("Last", "==", lastName)
-  //     );
-  //     const querySnapshot = await getDocs(q);
-
-  //     if (querySnapshot.empty) {
-  //       console.error("Selected teacher not found");
-  //       return null;
-  //     }
-
-  //     let selectedTeacherId = null;
-  //     querySnapshot.forEach((doc) => {
-  //       selectedTeacherId = doc.id;
-  //     });
-
-  //     return selectedTeacherId;
-  //   } catch (error) {
-  //     console.error("Error fetching teacher ID: ", error);
-  //     return null;
-  //   }
-  // };
-
   const getTeacherNameById = async (teacherId) => {
     try {
       // Query Firestore to get the teacher's document by ID
@@ -201,50 +174,21 @@ const Students = () => {
       return "N/A";
     }
   };
+  const createGradebookEntry = async (studentId, classId) => {
+    try {
+      await addDoc(collection(db, "Gradebook"), {
+        studentId,
+        classId,
+        grade: 0,
+      });
+      console.log(
+        `Gradebook entry created for student ${studentId} in class ${classId}`
+      );
+    } catch (error) {
+      console.error("Error adding Gradebook entry: ", error);
+    }
+  };
 
-  // const getClassRefByName = async (className) => {
-  //   try {
-  //     const q = query(
-  //       collection(db, "Classes"),
-  //       where("Name", "==", className)
-  //     );
-  //     const querySnapshot = await getDocs(q);
-
-  //     if (querySnapshot.empty) {
-  //       console.error(`Class with name ${className} not found`);
-  //       return null;
-  //     }
-
-  //     let classRef = null;
-  //     querySnapshot.forEach((doc) => {
-  //       classRef = doc.ref;
-  //     });
-
-  //     return classRef;
-  //   } catch (error) {
-  //     console.error("Error fetching class reference: ", error);
-  //     return null;
-  //   }
-  // };
-
-  // const fetchTeacherName = async (teacherRef) => {
-  //   try {
-  //     const teacherDoc = await getDoc(teacherRef);
-  //     console.log(teacherDoc);
-  //     if (teacherDoc.exists()) {
-  //       const teacherData = teacherDoc.data();
-  //       return `${teacherData.First} ${teacherData.Last}`;
-  //     } else {
-  //       //console.error("Teacher document not found");
-  //       return "N/A";
-  //     }
-  //   } catch (error) {
-  //     console.error("Error fetching teacher data:", error);
-  //     return "N/A";
-  //   }
-  // };
-
-  // Submit button handler for when user wants to log a new student into the database
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -254,29 +198,23 @@ const Students = () => {
       return;
     }
 
-    let teacher_id = await getTeacherIdByName(Teacher.First, Teacher.Last);
-    const teacherRef = doc(db, "teachers", teacher_id);
-    //console.log(enrolledIn);
-
-    const enrolledInRefs = await Promise.all(
-      enrolledIn.map(async (className) => await getClassRefByName(className))
-    );
-
     const newStudent = {
       First,
       Last,
       Grade,
-      Teacher: teacherRef,
-      enrolledIn: enrolledInRefs,
+      Teacher,
+      enrolledIn,
     };
-
-    // Log the newStudent object before adding it to Firestore
-    console.log("Submitting new student: ", newStudent);
 
     try {
       const docRef = await addDoc(collection(db, "Students"), newStudent);
       console.log("Document written with ID: ", docRef.id);
       fetchStudents();
+
+      //Now create gradebook enteries for the courses students were enrolled in
+      enrolledIn.forEach((classId) => {
+        createGradebookEntry(docRef.id, classId);
+      });
 
       // Clear form fields after submission for better user experience
       setFirst("");
@@ -346,7 +284,7 @@ const Students = () => {
     const value = event.target.value;
     setEnrolledIn((prev) => {
       if (prev.includes(value)) {
-        return prev.filter((className) => className !== value);
+        return prev.filter((classId) => classId !== value);
       } else {
         return [...prev, value];
       }
@@ -390,7 +328,14 @@ const Students = () => {
               placeholder="Filter by name"
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <Button onClick={handleSearch} variant="contained">
+            <Button
+              sx={{
+                background: "#147a7c",
+                "&:hover": { backgroundColor: "#0f5f60" },
+              }}
+              onClick={handleSearch}
+              variant="contained"
+            >
               Search
             </Button>
           </div>
@@ -462,7 +407,12 @@ const Students = () => {
                     />
                   ))}
                 </FormControl>
-                <Button type="submit" variant="contained" color="primary">
+                <Button
+                  type="submit"
+                  variant="contained"
+                  color="primary"
+                  onClick={handleSubmit}
+                >
                   Add Student
                 </Button>
               </form>
@@ -660,6 +610,19 @@ const Students = () => {
                   </div>
                 )}
               </div>
+              <div className="personal-info">
+                <h2> Grades</h2>
+                {studentGrades.length > 0 ? (
+                  studentGrades.map((grade, index) => (
+                    <p key={index}>
+                      {grade.classId}: {grade.grade}
+                    </p>
+                  ))
+                ) : (
+                  <p>No grades available</p>
+                )}
+              </div>
+
               <div className="update-student">
                 <h2> Edit/Update Student</h2>
                 {/* TODO: Must provide an option where we can remove/edit/update the student through a button */}
