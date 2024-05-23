@@ -34,6 +34,7 @@ import "../styles/Students.css";
 
 const Students = () => {
   const [students, setStudents] = useState([]);
+  const [allStudents, setAllStudents] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [isAddingStudent, setIsAddingStudent] = useState(false);
@@ -49,6 +50,10 @@ const Students = () => {
   const [classes, setClasses] = useState([]);
   const [enrolledIn, setEnrolledIn] = useState([]);
   const [selectedTeacherName, setSelectedTeacherName] = useState("");
+
+  // When editing
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedStudent, setEditedStudent] = useState({});
 
   const fetchStudents = async () => {
     try {
@@ -113,6 +118,10 @@ const Students = () => {
     }
   };
 
+  useEffect(() => {
+    fetchStudents();
+  }, []);
+
   const handleSearch = () => {
     if (searchQuery.trim() === "") {
       // If search query is empty, fetch all students again
@@ -136,6 +145,39 @@ const Students = () => {
 
   const handleStudentClick = async (student) => {
     setSelectedStudent(student);
+    setEditedStudent(student);
+    setIsEditing(false);
+  };
+
+  const handleEditClick = () => {
+    setIsEditing(true);
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setEditedStudent({ ...editedStudent, [name]: value });
+  };
+
+  const handleSaveClick = async () => {
+    try {
+      const studentRef = doc(db, "Students", selectedStudent.id);
+      const studentSnapshot = await getDoc(studentRef);
+      const studentData = studentSnapshot.data();
+
+      const updatedStudent = { ...studentData, ...editedStudent };
+
+      await updateDoc(studentRef, updatedStudent);
+      setSelectedStudent(updatedStudent);
+      setIsEditing(false);
+
+      const updatedStudents = students.map((student) =>
+        student.id === updatedStudent.id ? updatedStudent : student
+      );
+      setStudents(updatedStudents);
+      setAllStudents(updatedStudents);
+    } catch (error) {
+      console.error("Error updating student data: ", error);
+    }
   };
 
   const handleAddOption = () => {
@@ -274,12 +316,6 @@ const Students = () => {
     if (selectedStudent) {
     }
   };
-
-  useEffect(() => {
-    fetchStudents();
-  }, []);
-
-  //
 
   const handleCheckboxChange = (event) => {
     //From internet
@@ -474,7 +510,7 @@ const Students = () => {
                 <CardMedia
                   component="img"
                   height="200"
-                  image="/assets/profile-picture.jpeg"
+                  image="/profile-picture.jpeg"
                   alt="profile-picture"
                 />
                 <CardContent>
@@ -491,31 +527,120 @@ const Students = () => {
             <div className="student-specifics">
               <div className="student-info-containers"></div>
               <div className="academic-info">
-                <h2>Academic Information </h2>
-                <p>
-                  {" "}
-                  Enrolled In:{" "}
-                  {selectedStudent.enrolledIn
-                    ? selectedStudent.enrolledIn.join(", ")
-                    : "N/A"}
-                </p>
-                <p> Average Grade: {selectedStudent.Grade || "N/A"}</p>
-                <p>Teacher: {selectedStudent.Teacher || "N/A"}</p>
+                <h2>Academic Information</h2>
+                {isEditing ? (
+                  <div>
+                    <label>Enrolled In: </label>
+                    <input
+                      type="text"
+                      name="EnrolledIn"
+                      value={editedStudent.EnrolledIn || ""}
+                      onChange={handleInputChange}
+                    />
+                    <br />
+                    <label>Average Grade: </label>
+                    <input
+                      type="text"
+                      name="Grade"
+                      value={editedStudent.Grade || ""}
+                      onChange={handleInputChange}
+                    />
+                    <br />
+                    <label>Teacher: </label>
+                    <input
+                      type="text"
+                      name="Teacher"
+                      value={editedStudent.Teacher || ""}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <p>
+                      Enrolled In:{" "}
+                      {selectedStudent.enrolledIn
+                        ? selectedStudent.enrolledIn.join(", ")
+                        : "N/A"}
+                    </p>
+                    <p>Average Grade: {selectedStudent.Grade || "N/A"}</p>
+                    <p>Teacher: {selectedStudent.Teacher || "N/A"}</p>
+                  </div>
+                )}
               </div>
               <div className="contact-info">
                 <h2> Contact Information </h2>
-                <p> Parent: {selectedStudent.parent || "N/A"}</p>
-                <p>
-                  Legal Guardian Phone #:
-                  {selectedStudent.guardianPhone || "N/A"}
-                </p>
-                <p> Email: {selectedStudent.email || "N/A"}</p>
+                {isEditing ? (
+                  <div>
+                    <label> Parent: </label>
+                    <input
+                      type="text"
+                      name="Parent"
+                      value={editedStudent.Parent || ""}
+                      onChange={handleInputChange}
+                    />
+                    <br />
+                    <label> Legal Guardian #: </label>
+                    <input
+                      type="text"
+                      name="LegalGuardianNumber"
+                      value={editedStudent.LegalGuardianNumber || ""}
+                      onChange={handleInputChange}
+                    />
+                    <br />
+                    <label>Email: </label>
+                    <input
+                      type="text"
+                      name="Email"
+                      value={editedStudent.Email || ""}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <p> Parent: {selectedStudent.parent || "N/A"}</p>
+                    <p>
+                      Legal Guardian Phone #:
+                      {selectedStudent.guardianPhone || "N/A"}
+                    </p>
+                    <p> Email: {selectedStudent.email || "N/A"}</p>
+                  </div>
+                )}
               </div>
               <div className="personal-info">
                 <h2> Personal Information</h2>
-                <p> Pronouns: {selectedStudent.Pronouns || "N/A"}</p>
-                <p> Birthday: {selectedStudent.Birthday || "N/A"}</p>
-                <p> Residence: {selectedStudent.Residence || "N/A"}</p>
+                {isEditing ? (
+                  <div>
+                    <label>Pronouns: </label>
+                    <input
+                      type="text"
+                      name="Pronouns"
+                      value={editedStudent.Pronouns || ""}
+                      onChange={handleInputChange}
+                    />
+                    <br />
+                    <label>Birthday: </label>
+                    <input
+                      type="text"
+                      name="Birthday"
+                      value={editedStudent.Birthday || ""}
+                      onChange={handleInputChange}
+                    />
+                    <br />
+                    <label>Residence: </label>
+                    <input
+                      type="text"
+                      name="Residence"
+                      value={editedStudent.Residence || ""}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <p> Pronouns: {selectedStudent.Pronouns || "N/A"}</p>
+                    <p> Birthday: {selectedStudent.Birthday || "N/A"}</p>
+                    <p> Residence: {selectedStudent.Residence || "N/A"}</p>
+                  </div>
+                )}
               </div>
               <div className="update-student">
                 <h2> Edit/Update Student</h2>
@@ -529,13 +654,11 @@ const Students = () => {
                     Remove Student
                   </Button>
                   <br />
-                  <Button
-                    onClick={handleEdit}
-                    variant="contained"
-                    color="primary"
-                  >
-                    Edit Information
-                  </Button>
+                  {isEditing ? (
+                    <button onClick={handleSaveClick}>Save</button>
+                  ) : (
+                    <button onClick={handleEditClick}>Edit</button>
+                  )}
                 </div>
               </div>
             </div>
