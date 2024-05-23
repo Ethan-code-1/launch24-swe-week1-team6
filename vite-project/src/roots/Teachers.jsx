@@ -87,6 +87,7 @@ const Teachers = () => {
         <div className="overlay"></div>
         <h1 className="teacherScreenHeader">Teacher Directory</h1>
       </div>
+      <hr></hr>
       <div className="main-wrapper">
         <div className="left-panel">
           <h1>All Teachers</h1>

@@ -7,7 +7,8 @@
 
 .full-width-image {
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: cover;
 }
 
 .overlay {
@@ -20,18 +21,19 @@
   z-index: 1;
 }
 
+
 .teacherScreenHeader {
   position: absolute;
-  top: 30%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 2; 
-  color: white; 
-  font-size: 4em; 
-  text-align: center; 
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-  animation: fadeIn 1s ease-in-out;
-  font-family: 'Lato', sans-serif;
+    top: 27%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2; 
+    color: white; 
+    font-size: 5em; 
+    text-align: center; 
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    animation: fadeIn 1s ease-in-out;
+    font-family: 'Lato', sans-serif;
 }
 
 .main-wrapper {
