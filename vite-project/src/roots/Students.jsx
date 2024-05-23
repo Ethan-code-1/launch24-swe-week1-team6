@@ -265,20 +265,6 @@ const Students = () => {
     fetchStudents();
   }, []);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   //
 
   const handleCheckboxChange = (event) => {
@@ -380,7 +366,7 @@ const Students = () => {
         <h1 className="homeScreenHeader">Student Directory</h1>
     </div>
     <hr className = "homePageHr"></hr>
-      <Card className="main-wrapper">
+      <Card className="main-wrapper" sx={{boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.2)'}}>
         <div className="left-container">
           <h1> All Students</h1>
           <p> Browse through the list of all Students</p>
