@@ -24,6 +24,7 @@ import {
   getDocs,
   addDoc,
   deleteDoc,
+  updateDoc,
   doc,
   getDoc,
   query,
@@ -44,12 +45,16 @@ const Students = () => {
   const [Last, setLast] = useState("");
   const [Grade, setGrade] = useState("");
   const [Teacher, setTeacher] = useState("");
-  //const [enrolledIn, setEnrolledIn] = useState(""); // assuming it's a string for now
 
+  //const [enrolledIn, setEnrolledIn] = useState(""); // assuming it's a string for now
   const [teachers, setTeachers] = useState([]);
   const [classes, setClasses] = useState([]);
-  const [enrolledIn, setEnrolledIn] = useState([]);
   const [selectedTeacherName, setSelectedTeacherName] = useState("");
+  const [selectedClassNames, setSelectedClassNames] = useState([]);
+
+  //New DB state variables after removing references
+  const [studentGrades, setStudentGrades] = useState([]);
+  const [enrolledIn, setEnrolledIn] = useState([]);
 
   // When editing
   const [isEditing, setIsEditing] = useState(false);
@@ -57,89 +62,54 @@ const Students = () => {
 
   const fetchStudents = async () => {
     try {
-      //Get all student records
-      const grabInformation = await getDocs(collection(db, "Students"));
-      const studentsList = [];
-
-      // From internet, user to handle nested async awaits
-      for (const doc of grabInformation.docs) {
-        const data = doc.data();
-        let enrolledInList = [];
-
-        // Check if student is enrolled in any classes
-        if (data.enrolledIn && data.enrolledIn.length > 0) {
-          // Loop through each class and fetch class names
-          for (const classRef of data.enrolledIn) {
-            try {
-              //Get the data for each class the student is enrolled in
-              const classDoc = await getDoc(classRef);
-              if (classDoc.exists) {
-                const classData = classDoc.data();
-                enrolledInList.push(classData.Name);
-              } else {
-                console.log("Class document not found");
-              }
-            } catch (error) {
-              console.error("Error fetching class data:", error);
-            }
-          }
-        } else {
-          console.log("N/A");
-        }
-
-        // Fetch teacher name
-        let teacherName = "N/A";
-        if (data.Teacher) {
-          try {
-            const teacherDoc = await getDoc(data.Teacher);
-            if (teacherDoc.exists) {
-              const teacherData = teacherDoc.data();
-              teacherName = `${teacherData.First} ${teacherData.Last}`;
-            }
-          } catch (error) {
-            console.error("Error fetching teacher data:", error);
-          }
-        }
-
-        studentsList.push({
-          id: doc.id,
-          First: data.First,
-          Last: data.Last,
-          Grade: data.Grade,
-          enrolledIn: enrolledInList,
-          Teacher: teacherName,
-        });
-      }
-
+      const querySnapshot = await getDocs(collection(db, "Students"));
+      const studentsList = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setAllStudents(studentsList);
       setStudents(studentsList);
-      console.log(studentsList);
     } catch (error) {
       console.error("Error fetching student data: ", error);
     }
   };
 
-  useEffect(() => {
-    fetchStudents();
-  }, []);
+  const fetchTeachers = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, "teachers"));
+      const teachersList = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setTeachers(teachersList);
+    } catch (error) {
+      console.error("Error fetching teacher data: ", error);
+    }
+  };
+
+  const fetchClasses = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, "Classes"));
+      const classesList = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setClasses(classesList);
+    } catch (error) {
+      console.error("Error fetching classes data: ", error);
+    }
+  };
 
   const handleSearch = () => {
     if (searchQuery.trim() === "") {
-      // If search query is empty, fetch all students again
       fetchStudents();
     } else {
-      // Filter students based on the search query
-      const filteredStudents = students.filter(
+      const filteredStudents = allStudents.filter(
         (student) =>
           student.First.toLowerCase().includes(searchQuery.toLowerCase()) ||
           student.Last.toLowerCase().includes(searchQuery.toLowerCase())
       );
-      if (filteredStudents.length === 0) {
-        // If no matching students found, set an empty array
-        setStudents([]);
-      } else {
-        // Set filtered students
-        setStudents(filteredStudents);
-      }
+      setStudents(filteredStudents.length > 0 ? filteredStudents : []);
     }
   };
 
@@ -147,36 +117,33 @@ const Students = () => {
     setSelectedStudent(student);
     setEditedStudent(student);
     setIsEditing(false);
+
+    // Fetch the teacher's name by ID
+    const teacherName = await getTeacherNameById(student.Teacher);
+    setSelectedTeacherName(teacherName);
+
+    // Fetch the class names
+    const classNames = await fetchClassNames(student.enrolledIn);
+    setSelectedClassNames(classNames);
   };
 
-  const handleEditClick = () => {
-    setIsEditing(true);
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setEditedStudent({ ...editedStudent, [name]: value });
-  };
-
-  const handleSaveClick = async () => {
+  // Getter function that converts the classIds into names
+  const fetchClassNames = async (classIds) => {
     try {
-      const studentRef = doc(db, "Students", selectedStudent.id);
-      const studentSnapshot = await getDoc(studentRef);
-      const studentData = studentSnapshot.data();
-
-      const updatedStudent = { ...studentData, ...editedStudent };
-
-      await updateDoc(studentRef, updatedStudent);
-      setSelectedStudent(updatedStudent);
-      setIsEditing(false);
-
-      const updatedStudents = students.map((student) =>
-        student.id === updatedStudent.id ? updatedStudent : student
+      const classNames = await Promise.all(
+        classIds.map(async (classId) => {
+          const classDoc = await getDoc(doc(db, "Classes", classId));
+          if (classDoc.exists()) {
+            return classDoc.data().Name;
+          } else {
+            return "N/A";
+          }
+        })
       );
-      setStudents(updatedStudents);
-      setAllStudents(updatedStudents);
+      return classNames;
     } catch (error) {
-      console.error("Error updating student data: ", error);
+      console.error("Error fetching class names:", error);
+      return [];
     }
   };
 
@@ -185,67 +152,43 @@ const Students = () => {
     setIsAddingStudent((prevState) => !prevState);
   };
 
-  const getTeacherIdByName = async (firstName, lastName) => {
+  // const getTeacherIdByName = async (firstName, lastName) => {
+  //   try {
+  //     // Query Firestore to get the teacher's ID
+  //     const q = query(
+  //       collection(db, "teachers"),
+  //       where("First", "==", firstName),
+  //       where("Last", "==", lastName)
+  //     );
+  //     const querySnapshot = await getDocs(q);
+
+  //     if (querySnapshot.empty) {
+  //       console.error("Selected teacher not found");
+  //       return null;
+  //     }
+
+  //     let selectedTeacherId = null;
+  //     querySnapshot.forEach((doc) => {
+  //       selectedTeacherId = doc.id;
+  //     });
+
+  //     return selectedTeacherId;
+  //   } catch (error) {
+  //     console.error("Error fetching teacher ID: ", error);
+  //     return null;
+  //   }
+  // };
+
+  const getTeacherNameById = async (teacherId) => {
     try {
-      // Query Firestore to get the teacher's ID
-      const q = query(
-        collection(db, "teachers"),
-        where("First", "==", firstName),
-        where("Last", "==", lastName)
-      );
-      const querySnapshot = await getDocs(q);
+      // Query Firestore to get the teacher's document by ID
+      const teacherDoc = await getDoc(doc(db, "teachers", teacherId));
 
-      if (querySnapshot.empty) {
-        console.error("Selected teacher not found");
-        return null;
-      }
-
-      let selectedTeacherId = null;
-      querySnapshot.forEach((doc) => {
-        selectedTeacherId = doc.id;
-      });
-
-      return selectedTeacherId;
-    } catch (error) {
-      console.error("Error fetching teacher ID: ", error);
-      return null;
-    }
-  };
-
-  const getClassRefByName = async (className) => {
-    try {
-      const q = query(
-        collection(db, "Classes"),
-        where("Name", "==", className)
-      );
-      const querySnapshot = await getDocs(q);
-
-      if (querySnapshot.empty) {
-        console.error(`Class with name ${className} not found`);
-        return null;
-      }
-
-      let classRef = null;
-      querySnapshot.forEach((doc) => {
-        classRef = doc.ref;
-      });
-
-      return classRef;
-    } catch (error) {
-      console.error("Error fetching class reference: ", error);
-      return null;
-    }
-  };
-
-  const fetchTeacherName = async (teacherRef) => {
-    try {
-      const teacherDoc = await getDoc(teacherRef);
-      console.log(teacherDoc);
       if (teacherDoc.exists()) {
         const teacherData = teacherDoc.data();
         return `${teacherData.First} ${teacherData.Last}`;
       } else {
-        //console.error("Teacher document not found");
+        console.error(`Teacher with ID ${teacherId} not found`);
         return "N/A";
       }
     } catch (error) {
@@ -253,6 +196,48 @@ const Students = () => {
       return "N/A";
     }
   };
+
+  // const getClassRefByName = async (className) => {
+  //   try {
+  //     const q = query(
+  //       collection(db, "Classes"),
+  //       where("Name", "==", className)
+  //     );
+  //     const querySnapshot = await getDocs(q);
+
+  //     if (querySnapshot.empty) {
+  //       console.error(`Class with name ${className} not found`);
+  //       return null;
+  //     }
+
+  //     let classRef = null;
+  //     querySnapshot.forEach((doc) => {
+  //       classRef = doc.ref;
+  //     });
+
+  //     return classRef;
+  //   } catch (error) {
+  //     console.error("Error fetching class reference: ", error);
+  //     return null;
+  //   }
+  // };
+
+  // const fetchTeacherName = async (teacherRef) => {
+  //   try {
+  //     const teacherDoc = await getDoc(teacherRef);
+  //     console.log(teacherDoc);
+  //     if (teacherDoc.exists()) {
+  //       const teacherData = teacherDoc.data();
+  //       return `${teacherData.First} ${teacherData.Last}`;
+  //     } else {
+  //       //console.error("Teacher document not found");
+  //       return "N/A";
+  //     }
+  //   } catch (error) {
+  //     console.error("Error fetching teacher data:", error);
+  //     return "N/A";
+  //   }
+  // };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -298,6 +283,35 @@ const Students = () => {
     }
   };
 
+  const handleEditClick = () => {
+    setEditedStudent(selectedStudent); // Initialize editedStudent with selectedStudent data
+    setIsEditing(true);
+  };
+
+  const handleSaveClick = async () => {
+    try {
+      const studentRef = doc(db, "Students", selectedStudent.id);
+      const studentSnapshot = await getDoc(studentRef);
+      const studentData = studentSnapshot.data();
+
+      const updatedStudent = { ...studentData, ...editedStudent };
+
+      await updateDoc(studentRef, updatedStudent);
+      setSelectedStudent(updatedStudent);
+      setIsEditing(false);
+
+      const updatedStudents = students.map((student) =>
+        student.id === updatedStudent.id ? updatedStudent : student
+      );
+
+      console.log(updatedStudents);
+      setStudents(updatedStudents);
+      setAllStudents(updatedStudents);
+    } catch (error) {
+      console.error("Error updating student data: ", error);
+    }
+  };
+
   // TODO: Handlers for the deletion of student from the list, reversing the way we worked with handleSubmit
   const handleDelete = async () => {
     if (selectedStudent) {
@@ -312,9 +326,9 @@ const Students = () => {
     }
   };
 
-  const handleEdit = async () => {
-    if (selectedStudent) {
-    }
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setEditedStudent({ ...editedStudent, [name]: value });
   };
 
   const handleCheckboxChange = (event) => {
@@ -330,42 +344,18 @@ const Students = () => {
   };
 
   useEffect(() => {
-    const fetchTeachers = async () => {
-      try {
-        const grabInformation = await getDocs(collection(db, "teachers"));
-        const teachersList = [];
-        grabInformation.forEach((doc) => {
-          const data = doc.data();
-          teachersList.push(data);
-        });
-        setTeachers(teachersList);
-      } catch (error) {
-        console.error("Error fetching teachers:", error);
-      }
-    };
-
+    fetchStudents();
     fetchTeachers();
-  }, []);
-
-  useEffect(() => {
-    const fetchClasses = async () => {
-      try {
-        const grabInformation = await getDocs(collection(db, "Classes"));
-        const classesList = [];
-        grabInformation.forEach((doc) => {
-          const data = doc.data();
-          classesList.push(data);
-        });
-        setClasses(classesList);
-      } catch (error) {
-        console.error("Error fetching classes:", error);
-      }
-    };
-
     fetchClasses();
   }, []);
 
-  //
+  // Helper function to edit the Academic Information section so that the information is saved
+  useEffect(() => {
+    if (selectedStudent && isEditing) {
+      setEditedStudent(selectedStudent);
+    }
+  }, [selectedStudent, isEditing]);
+
   return (
     <div>
       <div className="image-container">
@@ -377,6 +367,7 @@ const Students = () => {
         <div className="overlay"></div>
         <h1 className="studentScreenHeader">Student Directory</h1>
       </div>
+
       <hr className="homePageHr"></hr>
       <Card className="main-wrapper">
         <div className="left-container">
@@ -439,7 +430,7 @@ const Students = () => {
                   >
                     <MenuItem value="">Select a teacher</MenuItem>
                     {teachers.map((teacher, index) => (
-                      <MenuItem key={index} value={teacher}>
+                      <MenuItem key={index} value={teacher.id}>
                         {teacher.First} {teacher.Last}
                       </MenuItem>
                     ))}
@@ -475,7 +466,6 @@ const Students = () => {
                 <th className="student-photo"> Photo </th>
                 <th className="student-name">Name</th>
                 <th className="student-grade">Grade</th>
-                <th className="student-teacher">Teacher</th>
               </tr>
             </thead>
             <tbody>
@@ -492,7 +482,6 @@ const Students = () => {
                     {`${student.First} ${student.Last}`}
                   </td>
                   <td className="student-grade">{student.Grade}</td>
-                  <td className="student-teacher">{student.Teacher}</td>
                 </tr>
               ))}
             </tbody>
@@ -530,40 +519,59 @@ const Students = () => {
                 <h2>Academic Information</h2>
                 {isEditing ? (
                   <div>
-                    <label>Enrolled In: </label>
-                    <input
-                      type="text"
-                      name="EnrolledIn"
-                      value={editedStudent.EnrolledIn || ""}
-                      onChange={handleInputChange}
-                    />
+                    <FormControl fullWidth margin="normal">
+                      <FormLabel>Enrolled In</FormLabel>
+                      <Select
+                        multiple
+                        value={editedStudent.enrolledIn || []}
+                        onChange={(e) =>
+                          setEditedStudent({
+                            ...editedStudent,
+                            enrolledIn: e.target.value,
+                          })
+                        }
+                        name="enrolledIn"
+                      >
+                        {classes.map((curClass, index) => (
+                          <MenuItem key={index} value={curClass.id}>
+                            {curClass.Name}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
                     <br />
-                    <label>Average Grade: </label>
-                    <input
-                      type="text"
-                      name="Grade"
-                      value={editedStudent.Grade || ""}
-                      onChange={handleInputChange}
-                    />
-                    <br />
-                    <label>Teacher: </label>
-                    <input
-                      type="text"
-                      name="Teacher"
-                      value={editedStudent.Teacher || ""}
-                      onChange={handleInputChange}
-                    />
+                    <FormControl fullWidth margin="normal">
+                      <FormLabel>Teacher</FormLabel>
+                      <Select
+                        value={
+                          editedStudent.Teacher ? editedStudent.Teacher : ""
+                        }
+                        onChange={(e) =>
+                          setEditedStudent({
+                            ...editedStudent,
+                            Teacher: e.target.value,
+                          })
+                        }
+                      >
+                        <MenuItem value="">Select a teacher</MenuItem>
+                        {teachers.map((teacher, index) => (
+                          <MenuItem key={index} value={teacher.id}>
+                            {`${teacher.First} ${teacher.Last}`}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
                   </div>
                 ) : (
                   <div>
                     <p>
                       Enrolled In:{" "}
-                      {selectedStudent.enrolledIn
-                        ? selectedStudent.enrolledIn.join(", ")
+                      {selectedClassNames.length > 0
+                        ? selectedClassNames.join(", ")
                         : "N/A"}
                     </p>
                     <p>Average Grade: {selectedStudent.Grade || "N/A"}</p>
-                    <p>Teacher: {selectedStudent.Teacher || "N/A"}</p>
+                    <p>Teacher: {selectedTeacherName || "N/A"}</p>
                   </div>
                 )}
               </div>
@@ -597,12 +605,12 @@ const Students = () => {
                   </div>
                 ) : (
                   <div>
-                    <p> Parent: {selectedStudent.parent || "N/A"}</p>
+                    <p> Parent: {selectedStudent.Parent || "N/A"}</p>
                     <p>
                       Legal Guardian Phone #:
-                      {selectedStudent.guardianPhone || "N/A"}
+                      {selectedStudent.LegalGuardianNumber || "N/A"}
                     </p>
-                    <p> Email: {selectedStudent.email || "N/A"}</p>
+                    <p> Email: {selectedStudent.Email || "N/A"}</p>
                   </div>
                 )}
               </div>

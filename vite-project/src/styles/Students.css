@@ -100,14 +100,12 @@
 .student-row :hover{
   cursor: pointer;
   color: blue;
-  font-weight: bold;
 }
 
 /* Styling for table body rows */
 .student-row td {
   padding: 10px;
   border: 1px solid #ccc;
-  
   
 }
 
