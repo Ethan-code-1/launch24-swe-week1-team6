@@ -237,12 +237,11 @@ const Teachers = () => {
                   <FormLabel>Subject</FormLabel>
                   <Select
                     value={Subject}
-                    onChange={(e) => { setSubject(e.target.value) }                    
-                    }
+                    onChange={(e) => { setSubject(e.target.value) } }
                   >
                     <MenuItem value="">Select a Subject</MenuItem>
                     {noTeacherClasses.map((eachClass, index) => (
-                      <MenuItem key={index}>
+                      <MenuItem key={index} >
                         {eachClass}
                       </MenuItem>
                     ))}
