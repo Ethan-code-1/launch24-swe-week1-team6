@@ -30,7 +30,7 @@ import {
 const Classes = () => {
   const [students, setStudents] = useState(null);
   const [thisClass, setClass] = useState(null);
-  const [allClasses, setAllClasses] = useState(null);
+  const [allClasses, setAllClasses] = useState([]);
 
   const [grade, setGrade] = useState();
   const [editGrade, setEditGrade] = useState(false);
@@ -41,40 +41,112 @@ const Classes = () => {
   const [teacherNames, setTeacherNames] = useState({});
   const [classSelected, setClassSelected] = useState(false);
 
-  const fetchStudents = async (classId) => {
-    try {
-      const querySnapshot = await getDoc(doc(db, "Classes", classId));
-
-      if (querySnapshot != null && classId) {
-        const classData = querySnapshot.data();
-
-        console.log(classData);
-        console.log(classData.Students);
-        const studentIds = classData.Students;
-
-        const studentsList = [];
-        for (let studentId of studentIds) {
-          const fetchedStudent = await getDoc(doc(db, "Students", studentId));
-          const student = fetchedStudent.data();
-
-          studentsList.push({
-            id: studentId,
-            First: student.First,
-            Last: student.Last,
-            Grade: student.Grade,
-            enrolledIn: student.enrolledIn,
-            Teacher: student.Teacher,
+  //Re renders the students when a grade is edited 
+  useEffect(() => {
+    if (thisClass) {
+      const fetchUpdatedData = async () => {
+        try {
+          const gradebookQuery = query(
+            collection(db, "Gradebook"),
+            where("classId", "==", thisClass.id)
+          );
+  
+          const querySnapshot = await getDocs(gradebookQuery);
+          const updatedGrades = {};
+  
+          querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            updatedGrades[data.studentId] = data.grade;
           });
+  
+          setStudentGrades(updatedGrades);
+  
+          const studentsList = [];
+  
+          for (const doc of querySnapshot.docs) {
+            const data = doc.data();
+            const student_id = data.studentId;
+  
+            const studentIdentity = await fetchStudentById(student_id);
+            const studentData = {
+              id: student_id,
+              grade: data.grade,
+              First: studentIdentity ? studentIdentity.First : null,
+              Last: studentIdentity ? studentIdentity.Last : null,
+              studentId: data.studentId,
+              classId: data.classId,
+            };
+  
+            studentsList.push(studentData);
+          }
+  
+          setStudents(studentsList);
+        } catch (error) {
+          console.error("Error fetching updated data: ", error);
         }
+      };
+  
+      fetchUpdatedData();
+    }
+  }, [studentGrades, thisClass]);
+  
 
-        setStudents(studentsList);
+  const fetchStudentById = async (studentId) => {
+    try {
+      const studentDocRef = doc(db, "Students", studentId);
+      const studentDoc = await getDoc(studentDocRef);
+  
+      if (studentDoc.exists()) {
+        const studentData = studentDoc.data();
+        const { First, Last } = studentData;
+        return { id: studentDoc.id, First, Last };
       } else {
-        console.log("No student document!");
+        console.log("No student document found with the provided ID!");
+        return null;
       }
     } catch (error) {
-      console.error("Cannot load students", error);
+      console.error("Error fetching student data: ", error);
     }
   };
+  
+  const fetchStudents = async (classId) => {
+    try {
+      const gradebookQuery = query(
+        collection(db, "Gradebook"),
+        where("classId", "==", classId)
+      );
+  
+      const querySnapshot = await getDocs(gradebookQuery);
+      const studentsList = [];
+  
+      for (const doc of querySnapshot.docs) {
+        const data = doc.data();
+        const student_id = data.studentId; 
+        
+        const studentIdentity = await fetchStudentById(student_id);
+        console.log("ID : ", studentIdentity);
+        console.log("grade" , data.grade);
+
+        const studentData = {
+          grade: data.grade,
+          First: studentIdentity ? studentIdentity.First : null,
+          Last: studentIdentity ? studentIdentity.Last : null,
+          studentId: data.studentId,
+          classId: data.classId,
+        };
+  
+        studentsList.push(studentData);
+      }
+  
+      //console.log("Students List: ", studentsList);
+      setStudents(studentsList);
+      console.log("final " ,studentsList)
+      return studentsList;
+    } catch (error) {
+      console.error("Error fetching students: ", error);
+    }
+  };
+
 
   const fetchAllTeacherNames = async () => {
     const names = {};
@@ -146,13 +218,13 @@ const Classes = () => {
       // Iterate through each document in the query snapshot
       gradebookSnapshot.forEach((doc) => {
         const curGrade = doc.data();
-        console.log("   ", curGrade);
+        //console.log("   ", curGrade);
         grades[curGrade.studentId] = curGrade.grade;
       });
 
       // Set the student grades state
       setStudentGrades(grades);
-      console.log("grades for cur class: ", grades);
+      //console.log(grades);
     } catch (error) {
       console.error("Error fetching student grades: ", error);
     }
@@ -167,6 +239,8 @@ const Classes = () => {
           key,
           ...doc.data(),
         }));
+
+        console.log("all classes" , allClasses); 
 
         setAllClasses(allClasses);
       } else {
@@ -191,68 +265,62 @@ const Classes = () => {
       fetchSelectedClass(thisClass.id);
       fetchStudentGrades(thisClass.id);
 
-      console.log(students);
+      //console.log(students)
     }
   }, [thisClass]);
 
-  const handleSubmit = async (e, studentId) => {
+  
+
+  const handleSubmit = async (e, studentId, classId) => {
     e.preventDefault();
-    await updateDoc(doc(db, "Students", studentId), {
-      Grade: grade,
-    });
+  
+    try {
+      // Create a query to find the document where studentId and courseId match
+      const gradebookQuery = query(
+        collection(db, "Gradebook"),
+        where("studentId", "==", studentId),
+        where("classId", "==", classId)
+      );
 
-    console.log("grade to update", grade);
+      console.log(studentId, classId);
+  
+      // Execute the query
+      const querySnapshot = await getDocs(gradebookQuery);
+  
+      if (!querySnapshot.empty) {
+        // Assuming there is only one document that matches the query
+        const gradebookDoc = querySnapshot.docs[0];
+        const gradebookDocRef = doc(db, "Gradebook", gradebookDoc.id);
+  
+        // Update the grade field in the matched document
+        await updateDoc(gradebookDocRef, {
+          grade: grade,
+        });
 
-    const gradebookQuery = query(
-      collection(db, "Gradebook"),
-      where("classId", "==", thisClass.id),
-      where("studentId", "==", studentId)
-    );
-
-    // Fetch the documents that match the query
-    const gradebookSnapshot = await getDocs(gradebookQuery);
-    const grades = [];
-    let gradeId = null;
-
-    // Iterate through each document in the query snapshot
-    gradebookSnapshot.forEach((doc) => {
-      const curGrade = doc.data();
-      gradeId = doc.id;
-      console.log("cur grade:", curGrade);
-      grades.push(curGrade);
-    });
-
-    console.log("grade to update: ", grades);
-    console.log("gradeID:", gradeId)
-
-
-    await updateDoc(doc(db, "Gradebook", gradeId), {
-      grade: grade,
-    });
-
-    console.log("updated grades: ", grades);
-
-    const updatedGrades = { ...studentGrades };
-    updatedGrades[studentId] = grade;
-    console.log(updatedGrades);
-
-    setStudentGrades(updatedGrades);
-    setEditGradeIndex(null);
-    setEditGrade(false);
-
-    fetchStudents(thisClass.id);
+        
+  
+        setGrade(0);
+        console.log("Grade updated successfully");
+      } else {
+        console.log("No matching document found");
+      }
+    } catch (error) {
+      console.error("Error updating grade: ", error);
+    }
   };
 
   const handleGradeChange = (e) => {
     const newGrade = e.target.value;
+    //console.log(newGrade);
     setGrade(newGrade);
   };
 
   const handleClassClick = async (selectedClass) => {
-    console.log(selectedClass);
+    //console.log(selectedClass)
     setClass(selectedClass);
     setClassSelected(true);
   };
+
 
   return (
     <>
@@ -264,6 +332,63 @@ const Classes = () => {
         ></img>
         <div className="overlay"></div>
         <h1 className="homeScreenHeader">Classes</h1>
+    </div>
+    <hr></hr>
+      <Card  sx={{paddingLeft: "50px", paddingRight : "50px", paddingTop: "30px", paddingBottom: "30px", marginTop: "5vh", boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.2)'}}>
+      {!classSelected ? (
+        <>
+          <h1>Class roster</h1>
+          <p> Select a class to view additional info! </p>
+          {(allClasses && teacherNames) && (
+            <TableContainer component={Paper}>
+              <Table sx={{ minWidth: 550 }} aria-label="simple table">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Class Name</TableCell>
+                    <TableCell align="left">Teacher</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {allClasses &&
+                    allClasses.map((eachClass) => (
+                      <TableRow
+                        key={eachClass.id}
+                        onClick={() => handleClassClick(eachClass)}
+                      >
+                        <TableCell
+                          component="th"
+                          scope="row"
+                          sx={{
+                            "&.MuiTableCell-root:hover": {
+                              color: "blue",
+                              cursor: "pointer"
+                            },
+                          }}
+                        >
+                          {eachClass.Name}
+                        </TableCell>
+                        <TableCell align="left">
+                          { teacherNames[eachClass.Teacher] || "Loading..."}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </>
+      ) : (
+        <>
+          <IconButton
+            variant="filled"
+            onClick={() => {
+              setClassSelected(false);
+            }}
+          >
+            <ArrowBackIcon />
+          </IconButton>
+          {(thisClass) &&
+             (
       </div>
       <hr></hr>
       <Card
@@ -352,6 +477,64 @@ const Classes = () => {
             <div>
               <h2>Roster</h2>
 
+            {students && (
+              <TableContainer component={Paper}>
+                <Table sx={{ minWidth: 550 }} aria-label="simple table">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Student First Name</TableCell>
+                      <TableCell align="left">Student Last Name</TableCell>
+                      <TableCell align="left">Grade</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {students &&
+                      students.map((student) => (
+                        <TableRow key={student.id}>
+                          <TableCell component="th" scope="row">
+                            {student.First}
+                          </TableCell>
+                          <TableCell align="left">{student.Last}</TableCell>
+                          <TableCell align="left">
+                            {editGrade && editGradeIndex === student.id ? (
+                              <>
+                                <form onSubmit={(e) => handleSubmit(e, student.studentId, student.classId)}>
+                                  <TextField
+                                    type="text"
+                                    defaultValue={studentGrades[student.id]}
+                                    onChange={(e) => handleGradeChange(e)}
+                                    variant="outlined"
+                                    size="small"
+                                    InputProps={{
+                                      style: { width: `80px` },
+                                    }}
+                                  ></TextField>
+                                  <Button type="submit"> Submit</Button>
+                                </form>
+                              </>
+                            ) : (
+                              <>{student.grade}</>
+                            )}
+
+                            <IconButton
+                              variant="filled"
+                              onClick={() => {
+                                setEditGrade(!editGrade);
+                                setEditGradeIndex(student.id);
+                              }}
+                            >
+                              <EditIcon />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </div>
+        </>
+      )}
               {students && (
                 <TableContainer component={Paper}>
                   <Table sx={{ minWidth: 550 }} aria-label="simple table">

@@ -245,6 +245,41 @@ const Students = () => {
   // TODO: Handlers for the deletion of student from the list, reversing the way we worked with handleSubmit
   const handleDelete = async () => {
     if (selectedStudent) {
+      const studentid = selectedStudent.id;
+
+      if (selectedStudent) {
+        const studentId = selectedStudent.id;
+    
+        try {
+          // Delete the student document
+          const studentRef = doc(db, "Students", studentId);
+          await deleteDoc(studentRef);
+          console.log("Student document successfully deleted!");
+    
+          // Query Gradebook for all entries with the matching studentId
+          const gradebookQuery = query(
+            collection(db, "Gradebook"),
+            where("studentId", "==", studentId)
+          );
+          const querySnapshot = await getDocs(gradebookQuery);
+    
+          // Delete each document in the Gradebook that matches the studentId
+          const deletePromises = [];
+          querySnapshot.forEach((doc) => {
+            deletePromises.push(deleteDoc(doc.ref));
+          });
+    
+          // Wait for all deletions to complete
+          await Promise.all(deletePromises);
+          console.log("Gradebook entries successfully deleted!");
+    
+
+          fetchStudents();
+        } catch (error) {
+          console.error("Error deleting documents: ", error);
+        }
+      }
+      
       try {
         const studentRef = doc(db, "Students", selectedStudent.id);
         await deleteDoc(studentRef);
@@ -254,6 +289,8 @@ const Students = () => {
         console.error("Error deleting document: ", error);
       }
     }
+    window.location.reload();
+
   };
 
   const handleEdit = async () => {
