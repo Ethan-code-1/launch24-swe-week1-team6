@@ -41,7 +41,7 @@ const Classes = () => {
   const [teacherNames, setTeacherNames] = useState({});
   const [classSelected, setClassSelected] = useState(false);
 
-  //Re renders the students when a grade is edited 
+  //Re renders the students when a grade is edited
   useEffect(() => {
     if (thisClass) {
       const fetchUpdatedData = async () => {
@@ -50,23 +50,23 @@ const Classes = () => {
             collection(db, "Gradebook"),
             where("classId", "==", thisClass.id)
           );
-  
+
           const querySnapshot = await getDocs(gradebookQuery);
           const updatedGrades = {};
-  
+
           querySnapshot.forEach((doc) => {
             const data = doc.data();
             updatedGrades[data.studentId] = data.grade;
           });
-  
+
           setStudentGrades(updatedGrades);
-  
+
           const studentsList = [];
-  
+
           for (const doc of querySnapshot.docs) {
             const data = doc.data();
             const student_id = data.studentId;
-  
+
             const studentIdentity = await fetchStudentById(student_id);
             const studentData = {
               id: student_id,
@@ -76,26 +76,25 @@ const Classes = () => {
               studentId: data.studentId,
               classId: data.classId,
             };
-  
+
             studentsList.push(studentData);
           }
-  
+
           setStudents(studentsList);
         } catch (error) {
           console.error("Error fetching updated data: ", error);
         }
       };
-  
+
       fetchUpdatedData();
     }
   }, [studentGrades, thisClass]);
-  
 
   const fetchStudentById = async (studentId) => {
     try {
       const studentDocRef = doc(db, "Students", studentId);
       const studentDoc = await getDoc(studentDocRef);
-  
+
       if (studentDoc.exists()) {
         const studentData = studentDoc.data();
         const { First, Last } = studentData;
@@ -108,24 +107,24 @@ const Classes = () => {
       console.error("Error fetching student data: ", error);
     }
   };
-  
+
   const fetchStudents = async (classId) => {
     try {
       const gradebookQuery = query(
         collection(db, "Gradebook"),
         where("classId", "==", classId)
       );
-  
+
       const querySnapshot = await getDocs(gradebookQuery);
       const studentsList = [];
-  
+
       for (const doc of querySnapshot.docs) {
         const data = doc.data();
-        const student_id = data.studentId; 
-        
+        const student_id = data.studentId;
+
         const studentIdentity = await fetchStudentById(student_id);
         console.log("ID : ", studentIdentity);
-        console.log("grade" , data.grade);
+        console.log("grade", data.grade);
 
         const studentData = {
           grade: data.grade,
@@ -134,19 +133,18 @@ const Classes = () => {
           studentId: data.studentId,
           classId: data.classId,
         };
-  
+
         studentsList.push(studentData);
       }
-  
+
       //console.log("Students List: ", studentsList);
       setStudents(studentsList);
-      console.log("final " ,studentsList)
+      console.log("final ", studentsList);
       return studentsList;
     } catch (error) {
       console.error("Error fetching students: ", error);
     }
   };
-
 
   const fetchAllTeacherNames = async () => {
     const names = {};
@@ -240,7 +238,7 @@ const Classes = () => {
           ...doc.data(),
         }));
 
-        console.log("all classes" , allClasses); 
+        console.log("all classes", allClasses);
 
         setAllClasses(allClasses);
       } else {
@@ -269,11 +267,9 @@ const Classes = () => {
     }
   }, [thisClass]);
 
-  
-
   const handleSubmit = async (e, studentId, classId) => {
     e.preventDefault();
-  
+
     try {
       // Create a query to find the document where studentId and courseId match
       const gradebookQuery = query(
@@ -283,24 +279,25 @@ const Classes = () => {
       );
 
       console.log(studentId, classId);
-  
+
       // Execute the query
       const querySnapshot = await getDocs(gradebookQuery);
-  
+
       if (!querySnapshot.empty) {
         // Assuming there is only one document that matches the query
         const gradebookDoc = querySnapshot.docs[0];
         const gradebookDocRef = doc(db, "Gradebook", gradebookDoc.id);
-  
+
         // Update the grade field in the matched document
         await updateDoc(gradebookDocRef, {
           grade: grade,
         });
 
-        
-  
         setGrade(0);
         console.log("Grade updated successfully");
+
+        setEditGrade(false);
+        setEditGradeIndex(null);
       } else {
         console.log("No matching document found");
       }
@@ -321,7 +318,6 @@ const Classes = () => {
     setClassSelected(true);
   };
 
-
   return (
     <>
       <div className="image-container">
@@ -329,68 +325,11 @@ const Classes = () => {
           src="/homePageSchool.jpeg"
           alt="School Image"
           className="full-width-image"
-        ></img>
+        />
         <div className="overlay"></div>
         <h1 className="homeScreenHeader">Classes</h1>
-    </div>
-    <hr></hr>
-      <Card  sx={{paddingLeft: "50px", paddingRight : "50px", paddingTop: "30px", paddingBottom: "30px", marginTop: "5vh", boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.2)'}}>
-      {!classSelected ? (
-        <>
-          <h1>Class roster</h1>
-          <p> Select a class to view additional info! </p>
-          {(allClasses && teacherNames) && (
-            <TableContainer component={Paper}>
-              <Table sx={{ minWidth: 550 }} aria-label="simple table">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Class Name</TableCell>
-                    <TableCell align="left">Teacher</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {allClasses &&
-                    allClasses.map((eachClass) => (
-                      <TableRow
-                        key={eachClass.id}
-                        onClick={() => handleClassClick(eachClass)}
-                      >
-                        <TableCell
-                          component="th"
-                          scope="row"
-                          sx={{
-                            "&.MuiTableCell-root:hover": {
-                              color: "blue",
-                              cursor: "pointer"
-                            },
-                          }}
-                        >
-                          {eachClass.Name}
-                        </TableCell>
-                        <TableCell align="left">
-                          { teacherNames[eachClass.Teacher] || "Loading..."}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-        </>
-      ) : (
-        <>
-          <IconButton
-            variant="filled"
-            onClick={() => {
-              setClassSelected(false);
-            }}
-          >
-            <ArrowBackIcon />
-          </IconButton>
-          {(thisClass) &&
-             (
       </div>
-      <hr></hr>
+      <hr />
       <Card
         sx={{
           paddingLeft: "50px",
@@ -404,41 +343,39 @@ const Classes = () => {
         {!classSelected ? (
           <>
             <h1>Class roster</h1>
-            <p> Select a class to view additional info! </p>
+            <p>Select a class to view additional info!</p>
             {allClasses && teacherNames && (
               <TableContainer component={Paper}>
                 <Table sx={{ minWidth: 550 }} aria-label="simple table">
                   <TableHead>
                     <TableRow>
-                      <TableCell><b>Class Name</b></TableCell>
-                      <TableCell align="left"><b>Teacher</b></TableCell>
+                      <TableCell>Class Name</TableCell>
+                      <TableCell align="left">Teacher</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {allClasses &&
-                      allClasses.map((eachClass) => (
-                        <TableRow
-                          key={eachClass.id}
-                          onClick={() => handleClassClick(eachClass)}
+                    {allClasses.map((eachClass) => (
+                      <TableRow
+                        key={eachClass.id}
+                        onClick={() => handleClassClick(eachClass)}
+                      >
+                        <TableCell
+                          component="th"
+                          scope="row"
+                          sx={{
+                            "&.MuiTableCell-root:hover": {
+                              color: "blue",
+                              cursor: "pointer",
+                            },
+                          }}
                         >
-                          <TableCell
-                            component="th"
-                            scope="row"
-                            hover
-                            sx={{
-                              "&.MuiTableCell-root:hover": {
-                                color: "blue",
-                                cursor: "pointer",
-                              },
-                            }}
-                          >
-                            {eachClass.Name}
-                          </TableCell>
-                          <TableCell align="left">
-                            {teacherNames[eachClass.Teacher] || "Loading..."}
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                          {eachClass.Name}
+                        </TableCell>
+                        <TableCell align="left">
+                          {teacherNames[eachClass.Teacher] || "Loading..."}
+                        </TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               </TableContainer>
@@ -457,122 +394,78 @@ const Classes = () => {
             {thisClass && (
               <>
                 <h1>{thisClass.Name} Class</h1>
-
                 <div>
                   <h2>General Info</h2>
                   <p>Welcome students!</p>
                   <p>
                     <b>Start Time:</b> {thisClass.Start_time}
-                    <br></br>
+                    <br />
                     <b>End Time:</b> {thisClass.End_time}
-                    <br></br>
+                    <br />
                     <b>Teacher:</b>{" "}
                     {teacherNames[thisClass.Teacher] || "Loading..."}
-                    <br></br>
+                    <br />
                     <b>Average Grade:</b> {thisClass.Average_grade || "N/A"}
                   </p>
                 </div>
-              </>
-            )}
-            <div>
-              <h2>Roster</h2>
-
-            {students && (
-              <TableContainer component={Paper}>
-                <Table sx={{ minWidth: 550 }} aria-label="simple table">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Student First Name</TableCell>
-                      <TableCell align="left">Student Last Name</TableCell>
-                      <TableCell align="left">Grade</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {students &&
-                      students.map((student) => (
-                        <TableRow key={student.id}>
-                          <TableCell component="th" scope="row">
-                            {student.First}
-                          </TableCell>
-                          <TableCell align="left">{student.Last}</TableCell>
-                          <TableCell align="left">
-                            {editGrade && editGradeIndex === student.id ? (
-                              <>
-                                <form onSubmit={(e) => handleSubmit(e, student.studentId, student.classId)}>
-                                  <TextField
-                                    type="text"
-                                    defaultValue={studentGrades[student.id]}
-                                    onChange={(e) => handleGradeChange(e)}
-                                    variant="outlined"
-                                    size="small"
-                                    InputProps={{
-                                      style: { width: `80px` },
-                                    }}
-                                  ></TextField>
-                                  <Button type="submit"> Submit</Button>
-                                </form>
-                              </>
-                            ) : (
-                              <>{student.grade}</>
-                            )}
-
-                            <IconButton
-                              variant="filled"
-                              onClick={() => {
-                                setEditGrade(!editGrade);
-                                setEditGradeIndex(student.id);
-                              }}
-                            >
-                              <EditIcon />
-                            </IconButton>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          </div>
-        </>
-      )}
-              {students && (
-                <TableContainer component={Paper}>
-                  <Table sx={{ minWidth: 550 }} aria-label="simple table">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell><b>Student First Name</b></TableCell>
-                        <TableCell align="left"><b>Student Last Name</b></TableCell>
-                        <TableCell align="left"><b>Grade</b></TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {students &&
-                        studentGrades &&
-                        students.map((student) => (
-                          <TableRow key={student.id}>
-                            <TableCell component="th" scope="row">
-                              {student.First}
-                            </TableCell>
-                            <TableCell align="left">{student.Last}</TableCell>
+                <div>
+                  <h2>Roster</h2>
+                  {students && (
+                    <TableContainer component={Paper}>
+                      <Table sx={{ minWidth: 550 }} aria-label="simple table">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Student First Name</TableCell>
                             <TableCell align="left">
-                              {editGrade && editGradeIndex === student.id ? (
-                                <>
-                                  <form
-                                    onSubmit={(e) =>
-                                      handleSubmit(e, student.id)
-                                    }
-                                  >
-                                    <TextField
-                                      type="text"
-                                      defaultValue={studentGrades[student.id]}
-                                      onChange={(e) => handleGradeChange(e)}
-                                      variant="outlined"
-                                      size="small"
-                                      InputProps={{
-                                        style: { width: `80px` },
+                              Student Last Name
+                            </TableCell>
+                            <TableCell align="left">Grade</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {students.map((student) => (
+                            <TableRow key={student.id}>
+                              <TableCell component="th" scope="row">
+                                {student.First}
+                              </TableCell>
+                              <TableCell align="left">{student.Last}</TableCell>
+                              <TableCell align="left">
+                                {editGrade && editGradeIndex === student.id ? (
+                                  <>
+                                    <form
+                                      onSubmit={(e) =>
+                                        handleSubmit(
+                                          e,
+                                          student.studentId,
+                                          student.classId
+                                        )
+                                      }
+                                    >
+                                      <TextField
+                                        type="text"
+                                        defaultValue={studentGrades[student.id]}
+                                        onChange={(e) => handleGradeChange(e)}
+                                        variant="outlined"
+                                        size="small"
+                                        InputProps={{
+                                          style: { width: `80px` },
+                                        }}
+                                      />
+                                      <Button type="submit">Submit</Button>
+                                      <IconButton
+                                      variant="filled"
+                                      onClick={() => {
+                                        setEditGrade(!editGrade);
+                                        setEditGradeIndex(student.id);
                                       }}
-                                    ></TextField>
-                                    <Button type="submit"> Submit</Button>
+                                    >
+                                      <EditIcon />
+                                    </IconButton>
+                                    </form>
+                                  </>
+                                ) : (
+                                  <>
+                                    {student.grade}
                                     <IconButton
                                       variant="filled"
                                       onClick={() => {
@@ -582,30 +475,18 @@ const Classes = () => {
                                     >
                                       <EditIcon />
                                     </IconButton>
-                                  </form>
-                                </>
-                              ) : (
-                                <>
-                                  {studentGrades[student.id]}
-                                  <IconButton
-                                    variant="filled"
-                                    onClick={() => {
-                                      setEditGrade(!editGrade);
-                                      setEditGradeIndex(student.id);
-                                    }}
-                                  >
-                                    <EditIcon />
-                                  </IconButton>
-                                </>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              )}
-            </div>
+                                  </>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+                </div>
+              </>
+            )}
           </>
         )}
       </Card>
@@ -614,3 +495,297 @@ const Classes = () => {
 };
 
 export default Classes;
+
+//   return (
+//     <>
+//       <div className="image-container">
+//         <img
+//           src="/homePageSchool.jpeg"
+//           alt="School Image"
+//           className="full-width-image"
+//         ></img>
+//         <div className="overlay"></div>
+//         <h1 className="homeScreenHeader">Classes</h1>
+//     </div>
+//     <hr></hr>
+//       <Card  sx={{paddingLeft: "50px", paddingRight : "50px", paddingTop: "30px", paddingBottom: "30px", marginTop: "5vh", boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.2)'}}>
+//       {!classSelected ? (
+//         <>
+//           <h1>Class roster</h1>
+//           <p> Select a class to view additional info! </p>
+//           {(allClasses && teacherNames) && (
+//             <TableContainer component={Paper}>
+//               <Table sx={{ minWidth: 550 }} aria-label="simple table">
+//                 <TableHead>
+//                   <TableRow>
+//                     <TableCell>Class Name</TableCell>
+//                     <TableCell align="left">Teacher</TableCell>
+//                   </TableRow>
+//                 </TableHead>
+//                 <TableBody>
+//                   {allClasses &&
+//                     allClasses.map((eachClass) => (
+//                       <TableRow
+//                         key={eachClass.id}
+//                         onClick={() => handleClassClick(eachClass)}
+//                       >
+//                         <TableCell
+//                           component="th"
+//                           scope="row"
+//                           sx={{
+//                             "&.MuiTableCell-root:hover": {
+//                               color: "blue",
+//                               cursor: "pointer"
+//                             },
+//                           }}
+//                         >
+//                           {eachClass.Name}
+//                         </TableCell>
+//                         <TableCell align="left">
+//                           { teacherNames[eachClass.Teacher] || "Loading..."}
+//                         </TableCell>
+//                       </TableRow>
+//                     ))}
+//                 </TableBody>
+//               </Table>
+//             </TableContainer>
+//           )}
+//         </>
+//       ) : (
+//         <>
+//           <IconButton
+//             variant="filled"
+//             onClick={() => {
+//               setClassSelected(false);
+//             }}
+//           >
+//             <ArrowBackIcon />
+//           </IconButton>
+
+//          </Card>
+//           {(thisClass) &&
+//              (
+//       </div>
+//       <hr></hr>
+//       <Card
+//         sx={{
+//           paddingLeft: "50px",
+//           paddingRight: "50px",
+//           paddingTop: "30px",
+//           paddingBottom: "30px",
+//           marginTop: "5vh",
+//           boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.2)",
+//         }}
+//       >
+//         {!classSelected ? (
+//           <>
+//             <h1>Class roster</h1>
+//             <p> Select a class to view additional info! </p>
+//             {allClasses && teacherNames && (
+//               <TableContainer component={Paper}>
+//                 <Table sx={{ minWidth: 550 }} aria-label="simple table">
+//                   <TableHead>
+//                     <TableRow>
+//                       <TableCell><b>Class Name</b></TableCell>
+//                       <TableCell align="left"><b>Teacher</b></TableCell>
+//                     </TableRow>
+//                   </TableHead>
+//                   <TableBody>
+//                     {allClasses &&
+//                       allClasses.map((eachClass) => (
+//                         <TableRow
+//                           key={eachClass.id}
+//                           onClick={() => handleClassClick(eachClass)}
+//                         >
+//                           <TableCell
+//                             component="th"
+//                             scope="row"
+//                             hover
+//                             sx={{
+//                               "&.MuiTableCell-root:hover": {
+//                                 color: "blue",
+//                                 cursor: "pointer",
+//                               },
+//                             }}
+//                           >
+//                             {eachClass.Name}
+//                           </TableCell>
+//                           <TableCell align="left">
+//                             {teacherNames[eachClass.Teacher] || "Loading..."}
+//                           </TableCell>
+//                         </TableRow>
+//                       ))}
+//                   </TableBody>
+//                 </Table>
+//               </TableContainer>
+//             )}
+//           </>
+//         ) : (
+//           <>
+//             <IconButton
+//               variant="filled"
+//               onClick={() => {
+//                 setClassSelected(false);
+//               }}
+//             >
+//               <ArrowBackIcon />
+//             </IconButton>
+//             {thisClass && (
+//               <>
+//                 <h1>{thisClass.Name} Class</h1>
+
+//                 <div>
+//                   <h2>General Info</h2>
+//                   <p>Welcome students!</p>
+//                   <p>
+//                     <b>Start Time:</b> {thisClass.Start_time}
+//                     <br></br>
+//                     <b>End Time:</b> {thisClass.End_time}
+//                     <br></br>
+//                     <b>Teacher:</b>{" "}
+//                     {teacherNames[thisClass.Teacher] || "Loading..."}
+//                     <br></br>
+//                     <b>Average Grade:</b> {thisClass.Average_grade || "N/A"}
+//                   </p>
+//                 </div>
+//               </>
+//             )}
+//             <div>
+//               <h2>Roster</h2>
+
+//             {students && (
+//               <TableContainer component={Paper}>
+//                 <Table sx={{ minWidth: 550 }} aria-label="simple table">
+//                   <TableHead>
+//                     <TableRow>
+//                       <TableCell>Student First Name</TableCell>
+//                       <TableCell align="left">Student Last Name</TableCell>
+//                       <TableCell align="left">Grade</TableCell>
+//                     </TableRow>
+//                   </TableHead>
+//                   <TableBody>
+//                     {students &&
+//                       students.map((student) => (
+//                         <TableRow key={student.id}>
+//                           <TableCell component="th" scope="row">
+//                             {student.First}
+//                           </TableCell>
+//                           <TableCell align="left">{student.Last}</TableCell>
+//                           <TableCell align="left">
+//                             {editGrade && editGradeIndex === student.id ? (
+//                               <>
+//                                 <form onSubmit={(e) => handleSubmit(e, student.studentId, student.classId)}>
+//                                   <TextField
+//                                     type="text"
+//                                     defaultValue={studentGrades[student.id]}
+//                                     onChange={(e) => handleGradeChange(e)}
+//                                     variant="outlined"
+//                                     size="small"
+//                                     InputProps={{
+//                                       style: { width: `80px` },
+//                                     }}
+//                                   ></TextField>
+//                                   <Button type="submit"> Submit</Button>
+//                                 </form>
+//                               </>
+//                             ) : (
+//                               <>{student.grade}</>
+//                             )}
+
+//                             <IconButton
+//                               variant="filled"
+//                               onClick={() => {
+//                                 setEditGrade(!editGrade);
+//                                 setEditGradeIndex(student.id);
+//                               }}
+//                             >
+//                               <EditIcon />
+//                             </IconButton>
+//                           </TableCell>
+//                         </TableRow>
+//                       ))}
+//                   </TableBody>
+//                 </Table>
+//               </TableContainer>
+//             )}
+//           </div>
+//         </>
+//       )}
+//               {students && (
+//                 <TableContainer component={Paper}>
+//                   <Table sx={{ minWidth: 550 }} aria-label="simple table">
+//                     <TableHead>
+//                       <TableRow>
+//                         <TableCell><b>Student First Name</b></TableCell>
+//                         <TableCell align="left"><b>Student Last Name</b></TableCell>
+//                         <TableCell align="left"><b>Grade</b></TableCell>
+//                       </TableRow>
+//                     </TableHead>
+//                     <TableBody>
+//                       {students &&
+//                         studentGrades &&
+//                         students.map((student) => (
+//                           <TableRow key={student.id}>
+//                             <TableCell component="th" scope="row">
+//                               {student.First}
+//                             </TableCell>
+//                             <TableCell align="left">{student.Last}</TableCell>
+//                             <TableCell align="left">
+//                               {editGrade && editGradeIndex === student.id ? (
+//                                 <>
+//                                   <form
+//                                     onSubmit={(e) =>
+//                                       handleSubmit(e, student.id)
+//                                     }
+//                                   >
+//                                     <TextField
+//                                       type="text"
+//                                       defaultValue={studentGrades[student.id]}
+//                                       onChange={(e) => handleGradeChange(e)}
+//                                       variant="outlined"
+//                                       size="small"
+//                                       InputProps={{
+//                                         style: { width: `80px` },
+//                                       }}
+//                                     ></TextField>
+//                                     <Button type="submit"> Submit</Button>
+//                                     <IconButton
+//                                       variant="filled"
+//                                       onClick={() => {
+//                                         setEditGrade(!editGrade);
+//                                         setEditGradeIndex(student.id);
+//                                       }}
+//                                     >
+//                                       <EditIcon />
+//                                     </IconButton>
+//                                   </form>
+//                                 </>
+//                               ) : (
+//                                 <>
+//                                   {studentGrades[student.id]}
+//                                   <IconButton
+//                                     variant="filled"
+//                                     onClick={() => {
+//                                       setEditGrade(!editGrade);
+//                                       setEditGradeIndex(student.id);
+//                                     }}
+//                                   >
+//                                     <EditIcon />
+//                                   </IconButton>
+//                                 </>
+//                               )}
+//                             </TableCell>
+//                           </TableRow>
+//                         ))}
+//                     </TableBody>
+//                   </Table>
+//                 </TableContainer>
+//               )}
+
+//             </div>
+
+//           </>
+//         )}
+//     </>
+//   );
+// };
