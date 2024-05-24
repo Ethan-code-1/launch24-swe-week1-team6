@@ -5,6 +5,8 @@ import {
   doc,
   updateDoc,
   addDoc,
+  query,
+  where, 
 } from "firebase/firestore";
 import { db } from "../../firebase";
 import "../styles/Teachers.css";
@@ -162,22 +164,60 @@ const Teachers = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    console.log("Subject is: " , Subject); 
+
     if (!First || !Last || !Subject || !Age) {
       alert("Please fill in all fields");
       return;
     }
 
+    let classId = "";
+    let newTeacherId = "";
+
+    try {
+
+      const q = query(collection(db, "Classes"), where("Name", "==", Subject));
+      const querySnapshot = await getDocs(q);
+  
+      if (!querySnapshot.empty) {
+        const classDoc = querySnapshot.docs[0];
+        classId = classDoc.id;
+        console.log("Class ID is: ", classId);
+  
+      } else {
+        console.log("No matching class found for the subject: ", Subject);
+      }
+
     const newTeacher = {
       First,
       Last,
-      Subject,
+      Classes : [classId],
       Age,
+
     };
+      console.log("TEACHER IS : " , newTeacher);
+   
+
+      
 
 
     try {
       // ADD NEW TEACHER
       const docRef = await addDoc(collection(db, "teachers"), newTeacher);
+      newTeacherId = docRef.id;
+
+
+      if (classId) {
+        const classRef = doc(db, "Classes", classId);
+        await updateDoc(classRef, {
+          Teacher: newTeacherId,
+        });
+        console.log("Class updated with new teacher ID.");
+      }
+  
+      fetchTeachers();
+
+
       //console.log("Document written with ID: ", docRef.id);
       fetchTeachers();
 
@@ -186,6 +226,7 @@ const Teachers = () => {
       setLast("");
       setSubject("");
       setAge("");
+      
     } catch (error) {
       console.error("Error adding document: ", error);
 
@@ -211,6 +252,7 @@ const Teachers = () => {
           Teacher: `${First} ${Last}`,
         });
       }
+      
     }
 
     return;
@@ -383,7 +425,7 @@ const Teachers = () => {
                     <input
                       type="text"
                       name="Subject"
-                      value={editedTeacher.Subject}
+                      value={editedTeacher.Subject || ""}
                       onChange={handleInputChange}
                     />
                     <br />
@@ -397,7 +439,7 @@ const Teachers = () => {
                   </div>
                 ) : (
                   <div>
-                    <p>Department: {selectedTeacher.Subject}</p>
+                    <p>Department: {selectedTeacher.Subject || "N/A"}</p>
                     <p>Supervisor: {selectedTeacher.Supervisor || "N/A"}</p>
                   </div>
                 )}
