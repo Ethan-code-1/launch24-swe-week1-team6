@@ -39,6 +39,7 @@ const Students = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [isAddingStudent, setIsAddingStudent] = useState(false);
+
   // State variable to control the visibility of the right container
   const [showRightContainer, setShowRightContainer] = useState(true);
 
@@ -51,6 +52,8 @@ const Students = () => {
   //const [enrolledIn, setEnrolledIn] = useState(""); // assuming it's a string for now
   const [teachers, setTeachers] = useState([]);
   const [classes, setClasses] = useState([]);
+  // When fetching class names
+  const [classNamesById, setClassNamesById] = useState({});
   const [selectedTeacherName, setSelectedTeacherName] = useState("");
   const [selectedClassNames, setSelectedClassNames] = useState([]);
 
@@ -97,6 +100,12 @@ const Students = () => {
         ...doc.data(),
       }));
       setClasses(classesList);
+
+      const classNamesMap = {};
+      classesList.forEach((curClass) => {
+        classNamesMap[curClass.id] = curClass.Name;
+      });
+      setClassNamesById(classNamesMap);
     } catch (error) {
       console.error("Error fetching classes data: ", error);
     }
@@ -119,6 +128,7 @@ const Students = () => {
     setSelectedStudent(student);
     setEditedStudent(student);
     setIsEditing(false);
+    await fetchStudentGrades(student.id);
 
     // Show the right container when a student is clicked
     setShowRightContainer(true);
@@ -192,8 +202,7 @@ const Students = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Do not allow information to pass if user has not answered the entire form
-    if (!First || !Last || !Grade || !Teacher || !enrolledIn) {
+    if (!First || !Last || !Grade || !Teacher || enrolledIn.length === 0) {
       alert("Please fill in all fields");
       return;
     }
@@ -203,18 +212,14 @@ const Students = () => {
       Last,
       Grade,
       Teacher,
-      enrolledIn,
+      enrolledIn, // Store class IDs directly
     };
 
-    console.log("NEW STUDENT: ", newStudent);
-
-      
     try {
       const docRef = await addDoc(collection(db, "Students"), newStudent);
       console.log("Document written with ID: ", docRef.id);
       fetchStudents();
 
-      //Now create gradebook enteries for the courses students were enrolled in
       enrolledIn.forEach((classId) => {
         createGradebookEntry(docRef.id, classId);
       });
@@ -224,11 +229,82 @@ const Students = () => {
       setLast("");
       setGrade("");
       setTeacher("");
-      setEnrolledIn("");
+      setEnrolledIn([]);
     } catch (error) {
       console.error("Error adding document: ", error);
     }
-    
+  };
+
+  const fetchStudentGrades = async (studentId) => {
+    try {
+      // Create a query against the Gradebook collection where the Student field matches the studentId
+      const gradebookQuery = query(
+        collection(db, "Gradebook"),
+        where("studentId", "==", studentId)
+      );
+
+      //console.log("F" + studentId + "F");
+
+      // Fetch the documents that match the query
+      const gradebookSnapshot = await getDocs(gradebookQuery);
+
+      const grades = [];
+
+      // Iterate through each document in the query snapshot
+      gradebookSnapshot.forEach((doc) => {
+        const curGrade = doc.data();
+        console.log("   ", curGrade);
+        grades.push(curGrade);
+      });
+
+      // Set the student grades state
+      setStudentGrades(grades);
+      console.log(grades);
+    } catch (error) {
+      console.error("Error fetching student grades: ", error);
+    }
+  };
+
+  const getClassRefByName = async (className) => {
+    try {
+      const q = query(
+        collection(db, "Classes"),
+        where("Name", "==", className)
+      );
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        console.error(`Class with name ${className} not found`);
+        return null;
+      }
+
+      let classRef = null;
+      querySnapshot.forEach((doc) => {
+        classRef = doc.ref;
+      });
+
+      return classRef;
+    } catch (error) {
+      console.error("Error fetching class reference: ", error);
+      return null;
+    }
+  };
+
+  const fetchTeacherName = async (teacherRef) => {
+    try {
+      const teacherDoc = await getDoc(teacherRef);
+      console.log(teacherDoc);
+      if (teacherDoc.exists()) {
+        const teacherData = teacherDoc.data();
+        return `${teacherData.First} ${teacherData.Last}`;
+      } else {
+        //console.error("Teacher document not found");
+        return "N/A";
+      }
+    } catch (error) {
+      console.error("Error fetching teacher data:", error);
+      return "N/A";
+    }
   };
 
   // Utilized from the Teachers.jsx file
@@ -265,8 +341,43 @@ const Students = () => {
   };
 
   // TODO: Handlers for the deletion of student from the list, reversing the way we worked with handleSubmit
+  // TODO: Handlers for the deletion of student from the list, reversing the way we worked with handleSubmit
   const handleDelete = async () => {
     if (selectedStudent) {
+      const studentid = selectedStudent.id;
+
+      if (selectedStudent) {
+        const studentId = selectedStudent.id;
+
+        try {
+          // Delete the student document
+          const studentRef = doc(db, "Students", studentId);
+          await deleteDoc(studentRef);
+          console.log("Student document successfully deleted!");
+
+          // Query Gradebook for all entries with the matching studentId
+          const gradebookQuery = query(
+            collection(db, "Gradebook"),
+            where("studentId", "==", studentId)
+          );
+          const querySnapshot = await getDocs(gradebookQuery);
+
+          // Delete each document in the Gradebook that matches the studentId
+          const deletePromises = [];
+          querySnapshot.forEach((doc) => {
+            deletePromises.push(deleteDoc(doc.ref));
+          });
+
+          // Wait for all deletions to complete
+          await Promise.all(deletePromises);
+          console.log("Gradebook entries successfully deleted!");
+
+          fetchStudents();
+        } catch (error) {
+          console.error("Error deleting documents: ", error);
+        }
+      }
+
       try {
         const studentRef = doc(db, "Students", selectedStudent.id);
         await deleteDoc(studentRef);
@@ -276,6 +387,7 @@ const Students = () => {
         console.error("Error deleting document: ", error);
       }
     }
+    window.location.reload();
   };
 
   const handleInputChange = (e) => {
@@ -283,22 +395,16 @@ const Students = () => {
     setEditedStudent({ ...editedStudent, [name]: value });
   };
 
-
-
   const handleCheckboxChange = (event) => {
-    const value = event.target.value;
+    const classId = event.target.value;
     setEnrolledIn((prev) => {
-      if (prev.includes(value)) {
-        return prev.filter((classId) => classId !== value);
+      if (prev.includes(classId)) {
+        return prev.filter((id) => id !== classId);
       } else {
-        return [...prev, value];
+        return [...prev, classId];
       }
     });
   };
-
-  useEffect(() => {
-    console.log('Enrolled In:', enrolledIn);
-  }, [enrolledIn]);
 
   useEffect(() => {
     fetchStudents();
@@ -401,27 +507,29 @@ const Students = () => {
                   </Select>
                 </FormControl>
                 <FormControl component="fieldset" fullWidth margin="normal">
-  <FormLabel component="legend">Enrolled In</FormLabel>
-  {classes.map((curClass) => (
-    <FormControlLabel
-      key={curClass.id}
-      control={
-        <Checkbox
-          checked={enrolledIn.includes(curClass.id)}
-          onChange={handleCheckboxChange}
-          value={curClass.id}
-        />
-      }
-      label={curClass.Name}
-    />
-  ))}
-</FormControl>
-
+                  <FormLabel component="legend">Enrolled In</FormLabel>
+                  {classes.map((curClass) => (
+                    <FormControlLabel
+                      key={curClass.id}
+                      control={
+                        <Checkbox
+                          checked={enrolledIn.includes(curClass.id)}
+                          onChange={handleCheckboxChange}
+                          value={curClass.id} // Use class ID here
+                        />
+                      }
+                      label={curClass.Name}
+                    />
+                  ))}
+                </FormControl>
                 <Button
+                  sx={{
+                    background: "#147a7c",
+                    "&:hover": { backgroundColor: "#0f5f60" },
+                  }}
                   type="submit"
                   variant="contained"
                   color="primary"
-                  onClick={handleSubmit}
                 >
                   Add Student
                 </Button>
@@ -625,7 +733,8 @@ const Students = () => {
                 {studentGrades.length > 0 ? (
                   studentGrades.map((grade, index) => (
                     <p key={index}>
-                      {grade.classId}: {grade.grade}
+                      {classNamesById[grade.classId] || "Unknown Class"}:{" "}
+                      {grade.grade}
                     </p>
                   ))
                 ) : (
