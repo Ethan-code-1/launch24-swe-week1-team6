@@ -174,7 +174,9 @@ const Teachers = () => {
       Age,
     };
 
+
     try {
+      // ADD NEW TEACHER
       const docRef = await addDoc(collection(db, "teachers"), newTeacher);
       //console.log("Document written with ID: ", docRef.id);
       fetchTeachers();
@@ -186,6 +188,29 @@ const Teachers = () => {
       setAge("");
     } catch (error) {
       console.error("Error adding document: ", error);
+
+      // UPDATE CLASS DATABASE
+      // update corresponding class to new teacher
+      const classesQuery = query(
+        collection(db, "Classes"),
+        where("Name", "==", Subject)
+      );
+
+      console.log(Subject);
+  
+      // Execute the query
+      const querySnapshot = await getDocs(classesQuery);
+  
+      if (!querySnapshot.empty) {
+        // Assuming there is only one document that matches the query
+        const classesDoc = querySnapshot.docs[0];
+        const classDocRef = doc(db, "Classes", classesDoc.id);
+  
+        // Update the grade field in the matched document
+        await updateDoc(classDocRef, {
+          Teacher: `${First} ${Last}`,
+        });
+      }
     }
 
     return;
